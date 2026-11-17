@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RFQ Auctions</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 960px; margin: 30px auto; padding: 0 15px; color: #222; }
+    h1, h2 { margin-bottom: 10px; }
+    .box { border: 1px solid #ccc; padding: 15px; border-radius: 6px; margin-bottom: 25px; background: #fafafa; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 7px; box-sizing: border-box; }
+    button { margin-top: 12px; padding: 9px 16px; background: #0b5ed7; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 9px; text-align: left; font-size: 14px; }
+    th { background: #f0f0f0; }
+    .status-Active { color: green; font-weight: bold; }
+    .status-Closed { color: #666; font-weight: bold; }
+    .status-Force { color: #c0392b; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>British Auction RFQ System</h1>
+
+  <div class="box">
+    <h2>Create New RFQ</h2>
+    <form id="rfqForm">
+      <div class="grid">
+        <div>
+          <label>RFQ Name</label>
+          <input type="text" id="name" placeholder="Mumbai to Rotterdam FCL" required />
+        </div>
+        <div>
+          <label>Reference ID</label>
+          <input type="text" id="reference_id" placeholder="RFQ-101" required />
+        </div>
+        <div>
+          <label>Pickup Date</label>
+          <input type="date" id="pickup_date" required />
+        </div>
+        <div>
+          <label>Bid Start Time</label>
+          <input type="datetime-local" id="bid_start" required />
+        </div>
+        <div>
+          <label>Bid Close Time</label>
+          <input type="datetime-local" id="bid_close" required />
+        </div>
+        <div>
+          <label>Forced Close Time</label>
+          <input type="datetime-local" id="forced_close" required />
+        </div>
+        <div>
+          <label>Trigger Window (X mins)</label>
+          <input type="number" id="trigger_window_minutes" value="10" min="1" required />
+        </div>
+        <div>
+          <label>Extension Duration (Y mins)</label>
+          <input type="number" id="extension_minutes" value="5" min="1" required />
+        </div>
+        <div>
+          <label>Trigger Condition</label>
+          <select id="trigger_type">
+            <option value="BID_RECEIVED">Bid Received in Window</option>
+            <option value="ANY_RANK_CHANGE">Any Rank Change</option>
+            <option value="L1_CHANGE">L1 Rank Change</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit">Create RFQ</button>
+    </form>
+  </div>
+
+  <h2>All Auctions</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Ref ID</th>
+        <th>RFQ Name</th>
+        <th>Current Lowest Bid</th>
+        <th>Bid Close Time</th>
+        <th>Forced Close Time</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="rfqTable"></tbody>
+  </table>
+
+  <script>
+    const API = "http://127.0.0.1:8000";
+
+    async function loadRFQs() {
+      const res = await fetch(`${API}/rfqs`);
+      const data = await res.json();
+      const tbody = document.getElementById("rfqTable");
+      tbody.innerHTML = "";
+
+      data.forEach(item => {
+        const statusClass = item.status.startsWith("Force") ? "status-Force" : `status-${item.status}`;
+        tbody.innerHTML += `
+          <tr>
+            <td>${item.reference_id}</td>
+            <td>${item.name}</td>
+            <td>${item.lowest_bid !== null ? "$" + item.lowest_bid : "No bids"}</td>
+            <td>${new Date(item.current_close).toLocaleString()}</td>
+            <td>${new Date(item.forced_close).toLocaleString()}</td>
+            <td class="${statusClass}">${item.status}</td>
+            <td><a href="details.html?id=${item.id}">Open</a></td>
+          </tr>
+        `;
+      });
+    }
+
+    document.getElementById("rfqForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = {
+        name: document.getElementById("name").value,
+        reference_id: document.getElementById("reference_id").value,
+        pickup_date: document.getElementById("pickup_date").value,
+        bid_start: document.getElementById("bid_start").value,
+        bid_close: document.getElementById("bid_close").value,
+        forced_close: document.getElementById("forced_close").value,
+        trigger_window_minutes: Number(document.getElementById("trigger_window_minutes").value),
+        extension_minutes: Number(document.getElementById("extension_minutes").value),
+        trigger_type: document.getElementById("trigger_type").value
+      };
+
+      const res = await fetch(`${API}/rfqs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || "Failed to create RFQ");
+        return;
+      }
+
+      e.target.reset();
+      loadRFQs();
+    });
+
+    loadRFQs();
+  </script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Auction Details</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 960px; margin: 30px auto; padding: 0 15px; color: #222; }
+    .box { border: 1px solid #ccc; padding: 15px; border-radius: 6px; margin-bottom: 20px; background: #fafafa; }
+    .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 14px; }
+    .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+    input { width: 100%; padding: 7px; box-sizing: border-box; }
+    button { margin-top: 12px; padding: 9px 16px; background: #198754; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 25px; }
+    th, td { border: 1px solid #ddd; padding: 9px; text-align: left; font-size: 14px; }
+    th { background: #f0f0f0; }
+    .rank-badge { background: #222; color: #fff; padding: 3px 7px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .rank-L1 { background: #198754; }
+    ul { padding-left: 18px; }
+    li { margin-bottom: 8px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <p><a href="index.html">&larr; Back to All RFQs</a></p>
+  <h1 id="title">Loading...</h1>
+
+  <div class="box info-grid" id="rfqInfo"></div>
+
+  <div class="box">
+    <h2>Submit Carrier Quote</h2>
+    <form id="bidForm">
+      <div class="form-grid">
+        <div>
+          <label>Carrier Name</label>
+          <input type="text" id="carrier_name" placeholder="Maersk / MSC" required />
+        </div>
+        <div>
+          <label>Freight Charges ($)</label>
+          <input type="number" step="0.01" id="freight_charges" required />
+        </div>
+        <div>
+          <label>Origin Charges ($)</label>
+          <input type="number" step="0.01" id="origin_charges" required />
+        </div>
+        <div>
+          <label>Destination Charges ($)</label>
+          <input type="number" step="0.01" id="destination_charges" required />
+        </div>
+        <div>
+          <label>Transit Time (Days)</label>
+          <input type="number" id="transit_time" min="1" required />
+        </div>
+        <div>
+          <label>Quote Validity</label>
+          <input type="date" id="quote_validity" required />
+        </div>
+      </div>
+      <button type="submit">Submit Bid</button>
+    </form>
+  </div>
+
+  <h2>Supplier Rankings</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Carrier</th>
+        <th>Freight</th>
+        <th>Origin</th>
+        <th>Destination</th>
+        <th>Total Price</th>
+        <th>Transit Time</th>
+        <th>Valid Until</th>
+      </tr>
+    </thead>
+    <tbody id="bidsTable"></tbody>
+  </table>
+
+  <h2>Activity Log</h2>
+  <div class="box">
+    <ul id="logsList"></ul>
+  </div>
+
+  <script>
+    const API = "http://127.0.0.1:8000";
+    const rfqId = new URLSearchParams(window.location.search).get("id");
+
+    async function loadDetails() {
+      const res = await fetch(`${API}/rfqs/${rfqId}`);
+      if (!res.ok) {
+        alert("RFQ not found");
+        return;
+      }
+      const data = await res.json();
+      const rfq = data.rfq;
+
+      document.getElementById("title").innerText = `${rfq.reference_id}: ${rfq.name} (${data.status})`;
+      document.getElementById("rfqInfo").innerHTML = `
+        <div><strong>Bid Start:</strong> ${new Date(rfq.bid_start).toLocaleString()}</div>
+        <div><strong>Current Close:</strong> ${new Date(rfq.current_close).toLocaleString()}</div>
+        <div><strong>Forced Close:</strong> ${new Date(rfq.forced_close).toLocaleString()}</div>
+        <div><strong>Trigger Window (X):</strong> ${rfq.trigger_window_minutes} mins</div>
+        <div><strong>Extension (Y):</strong> ${rfq.extension_minutes} mins</div>
+        <div><strong>Trigger Rule:</strong> ${rfq.trigger_type}</div>
+      `;
+
+      const bidsBody = document.getElementById("bidsTable");
+      bidsBody.innerHTML = "";
+      data.ranked_bids.forEach(item => {
+        const b = item.bid;
+        const badgeClass = item.rank === "L1" ? "rank-badge rank-L1" : "rank-badge";
+        bidsBody.innerHTML += `
+          <tr>
+            <td><span class="${badgeClass}">${item.rank}</span></td>
+            <td>${b.carrier_name}</td>
+            <td>$${b.freight_charges}</td>
+            <td>$${b.origin_charges}</td>
+            <td>$${b.destination_charges}</td>
+            <td><strong>$${b.total}</strong></td>
+            <td>${b.transit_time} days</td>
+            <td>${b.quote_validity}</td>
+          </tr>
+        `;
+      });
+
+      const logsList = document.getElementById("logsList");
+      logsList.innerHTML = "";
+      data.logs.forEach(log => {
+        logsList.innerHTML += `<li><strong>[${new Date(log.created_at).toLocaleTimeString()}]</strong> ${log.message}</li>`;
+      });
+    }
+
+    document.getElementById("bidForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = {
+        carrier_name: document.getElementById("carrier_name").value,
+        freight_charges: Number(document.getElementById("freight_charges").value),
+        origin_charges: Number(document.getElementById("origin_charges").value),
+        destination_charges: Number(document.getElementById("destination_charges").value),
+        transit_time: Number(document.getElementById("transit_time").value),
+        quote_validity: document.getElementById("quote_validity").value
+      };
+
+      const res = await fetch(`${API}/rfqs/${rfqId}/bids`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || "Failed to submit bid");
+        return;
+      }
+
+      e.target.reset();
+      loadDetails();
+    });
+
+    loadDetails();
+  </script>
+</body>
+</html>
