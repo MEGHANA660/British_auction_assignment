@@ -118,6 +118,7 @@ def add_bid(rfq_id: int, data: BidInput, db: Session = Depends(get_db)):
     rfq = db.query(RFQ).filter(RFQ.id == rfq_id).first()
     if not rfq:
         raise HTTPException(status_code=404, detail="RFQ not found")
-
+    if data.freight_charges < 0 or data.origin_charges < 0 or data.destination_charges < 0:
+        raise HTTPException(status_code=400, detail="Charges cannot be negative")
     bid = submit_bid(db, rfq, data)
     return {"bid": bid, "current_close": rfq.current_close}
