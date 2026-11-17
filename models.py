@@ -41,7 +41,7 @@ class Bid(Base):
     origin_charges = Column(Float, nullable=False)
     destination_charges = Column(Float, nullable=False)
     total = Column(Float, nullable=False)
-    #logistic datails (used as a tie-braker if carriers bid at the same time)  
+    #logistic details (used as a tie-braker if carriers bid at the same time for the shipment)  
     transit_time = Column(Integer, nullable=False)  
     quote_validity = Column(Date, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
