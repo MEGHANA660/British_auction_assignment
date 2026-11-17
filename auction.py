@@ -5,9 +5,9 @@ from models import RFQ, Bid, ActivityLog
 
 def get_auction_status(rfq,now):
     if now >= rfq.forced_close:
-        return "Force Closed" if rfq.current_close > rfq.bid_close else "Closed"
+        return "Force Closed" 
     if now >= rfq.current_close:
-        return "Force Closed" if rfq.current_close >= rfq.forced_close else "Closed"
+        return "Closed" 
     return "Active"
 
 def get_ranked_bids(bids):
