@@ -1,9 +1,11 @@
 # British Auction RFQ System
 
-This is a simple web application built for managing freight RFQs using British Auction rules. Carriers can submit quotes, see live rankings (`L1`, `L2`, `L3`), and the auction closing time automatically extends when qualifying bids arrive near the deadline.
+This is a web application for managing freight RFQs using British Auction rules.
+Carriers can submit quotes, view supplier rankings (L1, L2, L3), and the auction
+closing time automatically extends when qualifying bids arrive near the deadline.
 
 ## Tech Stack
-- **Backend:** Python, FastAPI, SQLAlchemy
+- **Backend:** Python, FastAPI, SQLAlchemy,Pydantic
 - **Database:** SQLite
 - **Frontend:** HTML, CSS, JavaScript (`fetch` API)
 
@@ -38,4 +40,4 @@ This is a simple web application built for managing freight RFQs using British A
 
 3. **Open the application:**
    - Open `http://127.0.0.1:8000` in your browser to create RFQs and place bids.
-   - Open `http://127.0.0` to view the FastAPI Swagger endpoints.
+   - Open `http://127.0.0.1:8000/docs` to view the FastAPI Swagger endpoints.
