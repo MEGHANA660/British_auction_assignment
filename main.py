@@ -49,6 +49,23 @@ def details_page():
 
 @app.post("/rfqs")
 def create_rfq(data: RFQInput, db: Session = Depends(get_db)):
+    if not data.name.strip():
+        raise HTTPException(status_code=400, detail="RFQ name cannot be empty")
+
+    if not data.reference_id.strip():
+        raise HTTPException(status_code=400, detail="Reference ID cannot be empty")
+
+    if data.trigger_window_minutes <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Trigger window must be greater than zero"
+        )
+
+    if data.extension_minutes <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Extension duration must be greater than zero"
+        )
     if data.trigger_type not in ["BID_RECEIVED", "ANY_RANK_CHANGE", "L1_CHANGE"]:
         raise HTTPException(status_code=400, detail="Invalid trigger type")
     if data.bid_close <= data.bid_start:
@@ -116,6 +133,27 @@ def get_single_rfq(rfq_id: int, db: Session = Depends(get_db)):
 @app.post("/rfqs/{rfq_id}/bids")
 def add_bid(rfq_id: int, data: BidInput, db: Session = Depends(get_db)):
     rfq = db.query(RFQ).filter(RFQ.id == rfq_id).first()
+    if not data.carrier_name.strip():
+        raise HTTPException(
+        status_code=400,
+        detail="Carrier name cannot be empty"
+        )
+
+    if data.transit_time <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Transit time must be greater than zero"
+        )
+
+    if (
+        data.freight_charges < 0
+        or data.origin_charges < 0
+        or data.destination_charges < 0
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Charges cannot be negative"
+        )
     if not rfq:
         raise HTTPException(status_code=404, detail="RFQ not found")
     if data.freight_charges < 0 or data.origin_charges < 0 or data.destination_charges < 0:
